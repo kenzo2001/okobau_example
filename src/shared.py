@@ -42,3 +42,17 @@ def get_folder(source, name: str) -> Path:
         folder.mkdir()
 
     return folder
+
+
+def get_lca(dataset: dict) -> dict:
+    """Get the LCA data for a single EPD"""
+
+    lca_url = dataset.get("links", {}).get("lca")
+    if not lca_url:
+        raise ValueError(f"No LCA data found for EPD {dataset.get('uid')}")
+
+    response = requests.get(f"{lca_url}?format=json")
+    response.raise_for_status()
+    data = response.json()
+
+    return data
