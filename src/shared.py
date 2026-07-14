@@ -179,3 +179,20 @@ def get_lca_by_epd_match(matched_epd: dict, object_name: str | None = None) -> d
         },
         "lca": get_lca(dataset),
     }
+
+def get_epd_names(language='de') -> list[dict]:
+    """Get UUIDs and names of all EPDs"""
+    edps = get_all_epds()
+    results = []
+    for epd in edps:
+        uuid = epd.get("uuid")
+        name = epd.get("name")
+
+        if not uuid:
+            continue
+        results.append({
+            "uuid": uuid,
+            "name": name,
+            "language": language
+        })
+    return results

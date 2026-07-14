@@ -14,3 +14,4 @@ def get_Answer(prompt: str, model: str = LLM_MODEL):
     r = requests.post(f"{OLLAMA}/api/generate", json=body, timeout=300)
     r.raise_for_status()
     return r.json()["response"]
+
