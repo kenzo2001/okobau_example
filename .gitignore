@@ -1,6 +1,2 @@
-.idea
-.vs
-.vscode
-
-src/data
-src/epdx_data
+*
+!src/
