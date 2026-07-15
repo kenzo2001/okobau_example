@@ -124,17 +124,39 @@ def get_lca(dataset: dict) -> list[dict]:
 
         modules = []
         unit = None
-        for entry in result.get("other", {}).get("anies", []):
+
+        other_data = result.get("other", {})
+
+        print(
+            "Chiavi disponibili dentro LCIAResult.other:",
+            list(other_data.keys()),
+        )
+
+        for entry in other_data.get("anies", []):
             if entry.get("name") == "referenceToUnitGroupDataSet":
-                short_descriptions = entry.get("value", {}).get("shortDescription", [])
-                unit = next((item.get("value") for item in short_descriptions if item.get("value")), None)
+                short_descriptions = (
+                    entry.get("value", {})
+                    .get("shortDescription", [])
+                )
+
+                unit = next(
+                    (
+                        item.get("value")
+                        for item in short_descriptions
+                        if item.get("value")
+                    ),
+                    None,
+                )
+
                 continue
 
             if "module" in entry:
+
+                raw_value = entry.get("value")
                 modules.append(
                     {
                         "module": entry.get("module"),
-                        "value": entry.get("value"),
+                        "value": "0.0" if raw_value is None else raw_value,
                         "scenario": entry.get("scenario"),
                     }
                 )
@@ -196,3 +218,27 @@ def get_epd_names(language='de') -> list[dict]:
             "language": language
         })
     return results
+
+def get_all_epd_names() -> list[dict]:
+    """Get UUIDs and names of all EPDs in all languages"""
+    epds = get_all_epds()
+    return [
+        {
+            "uuid": epd.get("uuid"),
+            "name": epd.get("name"),
+        }
+        for epd in epds
+        if epd.get("name")
+    ]
+
+def get_lca_by_uuid(uuid: str, name: str | None = None) -> dict:
+    """Get complete LCA dataset for a given EPD with UUID""" 
+    dataset = get_full_epd(uuid)
+
+    return {
+        "uuid": uuid,
+        "name": name or extract_epd_name(dataset),
+        "dataset_name": extract_epd_name(dataset),
+        "source": dataset.get("source"),
+        "lca": get_lca(dataset),
+    }
