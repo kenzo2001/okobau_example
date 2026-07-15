@@ -9,19 +9,5 @@ venv/
 !.env.example
 
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
-
-.vscode/
-.idea/
 
 output/
-data/
-epdx_data/
-
-.ipynb_checkpoints/
-*.log
-
-Thumbs.db
-.DS_Store
