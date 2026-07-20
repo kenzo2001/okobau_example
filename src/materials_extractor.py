@@ -1,15 +1,9 @@
-"""Architettura del file da separare prima della pipeline definitiva:
-Comporta coesione medio alta ma medio accoppiamento tra i file. Un esempio di separazione potrebbe essere:
-material_extractor-folder/
-├── config.py
-├── schemas.py
-├── prompts.py
-├── ollama_client.py
-├── material_extractor.py
-└── main.py
+"""Struttura per traduzione da tedesco/inglese in italiano
 """
 
 import json, sys
+import pandas as pd
+import pathlib as Path
 from ollama import Client
 from typing import List
 from pydantic import BaseModel, Field, ValidationError
@@ -23,12 +17,29 @@ from ollama import Client
 ollama_client = Client(
     host=OLLAMA_HOST
 )
-"""
-# temporanei per test
-print("OLLAMA_HOST:", OLLAMA_HOST, file=sys.stderr)
-print("LLM_MODEL:", LLM_MODEL, file=sys.stderr)
-print("EMBED_MODEL:", EMBED_MODEL, file=sys.stderr)
-"""
+
+TRANSLATE_COLUMNS = [
+    "catalog_name",
+    "name_de",
+    "name_en",
+    "classification_system",
+    "classification",
+    "general_comment_en"
+]
+
+# sequenza per risparmio token, elimina duplicati
+df = pd.read_csv("output/epd_attributes.csv", encoding="utf-8-sig")
+
+unique_texts = set()
+
+for column in TRANSLATE_COLUMNS:
+    for value in df[column].dropna():
+
+        text = str(value).strip()
+
+        if text: unique_texts.add(text)
+
+print("Testi unici: ", len(unique_texts))
 
 
 class MaterialsResponse(BaseModel):
@@ -115,74 +126,96 @@ def get_materials(text: str) -> List[str]:
     return cleaning_materials(result.materials)
 
 TRANSLATION_PROMPT = """
-Translate each construction material name into Italian.
+You are a technical translator specialized in construction materials,
+EPD and Life Cycle Assessment.
+
+Translate the provided construction dataset fields into Italian.
+
+Translate:
+- product names
+- classifications
+- descriptions
+- categories
+- geographical descriptions
+
+Do NOT translate:
+- UUID
+- numbers
+- years
+- URLs
+- registration codes
+- dataset versions
+- GWP values
+- technical codes
+
+Preserve exactly:
+- C25/30
+- XC4 XF1
+- EN 15804
+- ISO 14025
+- DIN
+- EPS
+- XPS
+- PIR
+- PUR
 
 Rules:
-- Preserve grades, classes, standards and abbreviations.
-- Do not add explanations.
-- Do not merge distinct materials.
-- Keep the original name in the output.
-- Return only valid JSON.
+- Use Italian construction terminology.
+- Do not summarize.
+- Do not explain.
+- Do not remove technical information.
+- Return only JSON.
 """
 
-def translate_materials_to_ita(materials: list[str]) -> list[dict]:
-    if not materials:
-        return[]
+
+
+def translate_epd_fields(
+    fields: dict
+) -> dict:
+
+
     response = ollama_client.chat(
         model=LLM_MODEL,
+
         messages=[
             {
-            "role": "system",
-            "content": TRANSLATION_PROMPT
+                "role":"system",
+                "content":TRANSLATION_PROMPT
             },
             {
-            "role": "user",
-            "content": json.dumps({
-                "materials": materials},
-                ensure_ascii=False
-                ),
-            },
+                "role":"user",
+                "content":json.dumps(
+                    fields,
+                    ensure_ascii=False
+                )
+            }
         ],
+
         format={
-            "type": "object",
-            "properties": {
-                "translations": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "original_name": {
-                                "type": "string"
-                            },
-                            "italian_name": {
-                                "type": "string"
-                            },
-                        },
-                        "required": [
-                            "original_name",
-                            "italian_name",
-                        ],
-                        "additionalProperties": False,
-                    },
-                }
-            },
-            "required": ["translations"],
-            "additionalProperties": False,
+            "type":"object",
+            "additionalProperties":{
+                "type":"string"
+            }
         },
 
         think=False,
         stream=False,
+
         options={
-            "temperature": 0,
-            "seed": 42,
-            "num_predict": 300,
-        },
+            "temperature":0,
+            "seed":42,
+            "num_predict":500
+        }
     )
 
-    result = json.loads(response.message.content)
 
-    return result ["translations"]
+    return json.loads(
+        response.message.content
+    )
 
+
+
+#main di testing su 5 record
 def main():
     
 
@@ -255,5 +288,8 @@ def main():
         print(f"{e}", file=sys.stderr)
         sys.exit(1)
 
-if __name__ == "__main__":
+
+
+if __name__=="__main__":
     main()
+

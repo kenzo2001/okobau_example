@@ -23,12 +23,28 @@ def get_epds(limit=10, start_index=0) -> dict:
     return data
 
 
-def get_all_epds() -> list[dict]:
-    """Get all EPD metadata in one request."""
+def get_all_epds(page_size: int = 500) -> list[dict]:
+    """Get all EPD metadata in one request.
+    Ripetizione di operazione anche se il database cresce"""
 
-    data = get_epds(limit=3000)
-    return data.get("data", [])
+    results: list[dict] = []
+    start_index = 0
+    total_count = None
 
+    while total_count is None or start_index < total_count:
+        data = get_epds(limit=page_size, start_index=start_index)
+
+        batch = data.get("data", [])
+        total_count = int(data.get("totalCount", 0))
+
+        if not batch:
+            break
+
+        results.extend(batch)
+        start_index += len(batch)
+
+        print(f"Catalogo scaricato: {len(results)}/{total_count}")
+    return results
 
 def get_full_epd(uid: str) -> dict:
     """Get the full dataset for a single EPD."""
